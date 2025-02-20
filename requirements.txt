@@ -1,2 +1,4 @@
 pyaudio 
 wave
+azure-cognitiveservices-speech 
+python-dotenv
