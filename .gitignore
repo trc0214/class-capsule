@@ -27,3 +27,4 @@ Thumbs.db
 
 # 測試文件
 tests/
+.pytest_cache/

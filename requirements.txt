@@ -1,9 +1,19 @@
-pyaudio 
+# 音訊相關
+pyaudio
 wave
-azure-cognitiveservices-speech 
+azure-cognitiveservices-speech
+
+# 環境設定
 python-dotenv
+
+# Azure OpenAI 客戶端
 openai
+
+# 自然語言處理
 jieba
 markdown
 deepmultilingualpunctuation
 rapidfuzz
+
+# 測試框架
+pytest

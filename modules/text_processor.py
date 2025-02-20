@@ -5,43 +5,57 @@ import jieba
 import jieba.analyse
 import markdown
 from deepmultilingualpunctuation import PunctuationModel
-from rapidfuzz import process
+from rapidfuzz import process, fuzz
 import re
 import logging
+
 
 class TextProcessor:
     def __init__(self):
         load_dotenv()
         self.punctuation_model = PunctuationModel()
-        self.deployment_name = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME')
+        self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
         self.client = AzureOpenAI(
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-            api_version="2024-02-01"  # 固定 API 版本
+            api_version="2024-02-01",  # 固定 API 版本
         )
 
         # 設置日誌系統
-        logging.basicConfig(filename='text_processor.log', level=logging.ERROR,
-                            format='%(asctime)s:%(levelname)s:%(message)s')
+        logging.basicConfig(
+            filename="text_processor.log",
+            level=logging.INFO,
+            format="%(asctime)s:%(levelname)s:%(message)s",
+        )
 
-    def format_text_for_readability(self, text: str, manual_topics: list[str] = None) -> str:
+    def format_text_for_readability(
+        self, text: str, manual_topics: list[str] = None
+    ) -> str:
         try:
             # 自動標點
             text = self.punctuation_model.restore_punctuation(text)
-            
+
             # 句子分割（確保句子級別斷句）
-            sentences = re.split(r'[。！？\n]', text)
-            formatted_text = [sent.strip() for sent in sentences if sent.strip()]  # 去除空白
+            sentences = re.split(r"[。！？!?;\n]+", text)
+            formatted_text = [
+                sent.strip() for sent in sentences if sent.strip()
+            ]  # 去除空白
 
             # 根據手動提供的主題修正拼寫錯誤
             if manual_topics:
                 for i, sent in enumerate(formatted_text):
                     words = list(jieba.cut(sent, cut_all=False))  # 分詞處理
                     for j, word in enumerate(words):
-                        best_match = process.extractOne(word, manual_topics, scorer=process.fuzz.partial_ratio)
-                        if best_match and best_match[1] > 80:
-                            words[j] = best_match[0]  # 只修正錯誤的詞
-                    formatted_text[i] = ''.join(words)  # 重新組合回句子
+                        best_match = process.extractOne(
+                            word, manual_topics, scorer=fuzz.partial_ratio
+                        )
+                        if (
+                            best_match
+                            and isinstance(best_match, tuple)
+                            and best_match[1] > 80
+                        ):
+                            words[j] = best_match[0]
+                    formatted_text[i] = "".join(words)  # 重新組合回句子
 
             return "。".join(formatted_text) + "。"  # 重新組合句子
         except Exception as e:
@@ -57,12 +71,16 @@ class TextProcessor:
                 model=self.deployment_name,  # 若部署名稱與基礎模型名稱不同，此處必須指派部署名稱
                 messages=[
                     {"role": "system", "content": "請用簡單的中文總結以下文本："},
-                    {"role": "user", "content": text}
+                    {"role": "user", "content": text},
                 ],
                 temperature=0.3,
-                max_tokens=max_summary_length
+                max_tokens=max_summary_length,
             )
-            return response.choices[0].message.get('content', '無法生成摘要')
+            return (
+                response.choices[0].message.content
+                if response.choices
+                else "無法生成摘要"
+            )
         except Exception as e:
             logging.error(f"摘要時發生錯誤: {e}")
             return "摘要生成失敗"
@@ -80,14 +98,19 @@ class TextProcessor:
             response = self.client.chat.completions.create(
                 model=self.deployment_name,
                 messages=[
-                    {"role": "system", "content": f"請從以下文本中提取 {num_topics} 個關鍵主題，以逗號分隔："},
-                    {"role": "user", "content": text}
+                    {
+                        "role": "system",
+                        "content": f"請從以下文本中提取 {num_topics} 個關鍵主題，以逗號分隔：",
+                    },
+                    {"role": "user", "content": text},
                 ],
                 temperature=0.3,
-                max_tokens=50
+                max_tokens=50,
             )
-            topics_raw = response.choices[0].message.get('content', '')  # 確保 content 存在
-            topics = re.split(r'[，,；]', topics_raw)  # 允許不同的標點符號
+            topics_raw = (
+                response.choices[0].message.content if response.choices else "None"
+            )
+            topics = re.split(r"[，,；]", topics_raw)  # 允許不同的標點符號
             return [t.strip() for t in topics if t.strip()]
         except Exception as e:
             logging.error(f"主題建模時發生錯誤: {e}")
@@ -100,7 +123,9 @@ class TextProcessor:
             logging.error(f"格式化文本為 Markdown 時發生錯誤: {e}")
             return "文本格式化失敗"
 
-    def combine_with_manual_topic(self, text: str, manual_topics: list[str] = None) -> list[str]:
+    def combine_with_manual_topic(
+        self, text: str, manual_topics: list[str] = None
+    ) -> list[str]:
         try:
             topics = self.perform_topic_modeling(text)
             combined_topics = set(topics) | set(manual_topics or [])
@@ -108,3 +133,4 @@ class TextProcessor:
         except Exception as e:
             logging.error(f"結合手動主題時發生錯誤: {e}")
             return []
+
