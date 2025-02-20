@@ -20,9 +20,9 @@ class-capsule/
 │   │── recorder.py        # 及時背景錄音
 │   │── speech_to_text.py  # 語音轉文字 (Azure API)
 │   │── summarizer.py      # 文字摘要 (AI NLP)
-│   │── config.py          # 設定檔 (API 金鑰、參數)
 │── logs/                  # 日誌紀錄
 │── output/                # 轉錄後的文字與摘要
+│── .env                   # 設定檔 (API 金鑰、參數)
 │── requirements.txt       # 依賴庫清單
 │── README.md              # 專案說明
 │── .gitignore             # Git 忽略設定
