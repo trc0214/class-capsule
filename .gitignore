@@ -3,6 +3,9 @@ env/
 venv/
 *.venv
 
+# 環境設定
+.env
+
 # Python 編譯與快取文件
 __pycache__/
 *.pyc
