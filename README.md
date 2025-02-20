@@ -81,3 +81,4 @@ pip install -r requirements.txt
 
 ## 📜 授權
 本專案採用 **MIT License**。歡迎自由使用與貢獻！🚀
+[LICENSE](LICENSE)
