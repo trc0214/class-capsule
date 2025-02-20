@@ -1,0 +1,23 @@
+# 虛擬環境
+env/
+venv/
+*.venv
+
+# Python 編譯與快取文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 日誌與輸出
+logs/
+output/
+*.log
+
+# 作業系統檔案
+.DS_Store
+Thumbs.db
+
+# IDE 設定
+.vscode/
+.idea/
