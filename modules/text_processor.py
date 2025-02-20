@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-import openai
+from openai import AzureOpenAI
 import jieba
 import jieba.analyse
 import markdown
@@ -13,16 +13,15 @@ class TextProcessor:
     def __init__(self):
         load_dotenv()
         self.punctuation_model = PunctuationModel()
-        self.openai_api_key = os.getenv('AZURE_OPENAI_API_KEY')
-        self.openai_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
-        self.openai_api_version = os.getenv('AZURE_OPENAI_API_VERSION')
         self.deployment_name = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME')
-        openai.api_key = self.openai_api_key
-        openai.api_base = self.openai_endpoint
-        openai.api_version = self.openai_api_version
+        self.client = AzureOpenAI(
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            api_version="2024-02-01"  # 固定 API 版本
+        )
 
         # 設置日誌系統
-        logging.basicConfig(filename='text_processor.log', level=logging.ERROR, 
+        logging.basicConfig(filename='text_processor.log', level=logging.ERROR,
                             format='%(asctime)s:%(levelname)s:%(message)s')
 
     def format_text_for_readability(self, text: str, manual_topics: list[str] = None) -> str:
@@ -52,10 +51,10 @@ class TextProcessor:
     def summarize_text(self, text: str, max_summary_length: int = 200) -> str:
         try:
             if len(text) > 2000:  # 過長文本的處理方式
-                text = text[:2000] + "..."  # 只取前 2000 個字，避免 API 輸入長度限制
+                text = text[:2000] + "..."  # 只取前 2000 個字以避免輸入長度限制
 
-            response = openai.ChatCompletion.create(
-                engine=self.deployment_name,
+            response = self.client.chat.completions.create(
+                model=self.deployment_name,  # 若部署名稱與基礎模型名稱不同，此處必須指派部署名稱
                 messages=[
                     {"role": "system", "content": "請用簡單的中文總結以下文本："},
                     {"role": "user", "content": text}
@@ -78,8 +77,8 @@ class TextProcessor:
 
     def perform_topic_modeling(self, text: str, num_topics: int = 3) -> list[str]:
         try:
-            response = openai.ChatCompletion.create(
-                engine=self.deployment_name,
+            response = self.client.chat.completions.create(
+                model=self.deployment_name,
                 messages=[
                     {"role": "system", "content": f"請從以下文本中提取 {num_topics} 個關鍵主題，以逗號分隔："},
                     {"role": "user", "content": text}
@@ -87,7 +86,7 @@ class TextProcessor:
                 temperature=0.3,
                 max_tokens=50
             )
-            topics_raw = response.choices[0].message.get('content', '')  # 確保 `content` 存在
+            topics_raw = response.choices[0].message.get('content', '')  # 確保 content 存在
             topics = re.split(r'[，,；]', topics_raw)  # 允許不同的標點符號
             return [t.strip() for t in topics if t.strip()]
         except Exception as e:
@@ -104,7 +103,7 @@ class TextProcessor:
     def combine_with_manual_topic(self, text: str, manual_topics: list[str] = None) -> list[str]:
         try:
             topics = self.perform_topic_modeling(text)
-            combined_topics = set(topics) | set(manual_topics or [])  # 避免 NoneType 錯誤
+            combined_topics = set(topics) | set(manual_topics or [])
             return list(combined_topics)
         except Exception as e:
             logging.error(f"結合手動主題時發生錯誤: {e}")
