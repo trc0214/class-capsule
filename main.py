@@ -15,7 +15,7 @@ def main():
     recorder.stop_recording()
     recognizer.stop_continuous_recognition()
 
-    print("Transcription result:")
+    print("Transcription result:")                                                                                         
     print(recognizer.get_transcript())
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@ jieba
 markdown
 deepmultilingualpunctuation
 rapidfuzz
+pdfplumber
 
 # 測試框架
 pytest
