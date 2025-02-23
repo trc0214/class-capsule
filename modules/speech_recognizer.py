@@ -12,10 +12,23 @@ class SpeechRecognizer:
         self.audio_stream = speechsdk.audio.PushAudioInputStream()
         self.audio_config = speechsdk.audio.AudioConfig(stream=self.audio_stream)
         self.speech_config = speechsdk.SpeechConfig(subscription=self.speech_key, region=self.region)
-        self.speech_config.speech_recognition_language = "zh-CN"  # 設置語音識別語言為中文（簡體）
-        self.speech_config.request_word_level_timestamps()  # 開啟詞級時間戳
-        self.speech_config.enable_dictation()  # 開啟聽寫模式
-        self.recognizer = speechsdk.SpeechRecognizer(speech_config=self.speech_config, audio_config=self.audio_config)
+
+        # 啟用詞級時間戳與聽寫模式
+        self.speech_config.request_word_level_timestamps()
+        self.speech_config.enable_dictation()
+
+        # 使用 AutoDetectSourceLanguageConfig 來支援多語言
+        self.auto_detect_source_language_config = speechsdk.languageconfig.AutoDetectSourceLanguageConfig(
+            languages=["zh-CN", "en-US", "ja-JP"]
+        )
+
+        # 這裡改用 SpeechRecognizer，但啟用多語言偵測
+        self.recognizer = speechsdk.SpeechRecognizer(
+            speech_config=self.speech_config,
+            auto_detect_source_language_config=self.auto_detect_source_language_config,
+            audio_config=self.audio_config
+        )
+
         self.transcript = []
 
         # 設置日誌記錄
@@ -28,10 +41,15 @@ class SpeechRecognizer:
 
     def _recognized_handler(self, evt):
         if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
-            print(f"完整識別: {evt.result.text}")
-            logging.info(f"完整識別: {evt.result.text}")
-            self.transcript.append(evt.result.text)
-            self._write_hourly_log(evt.result.text)
+            detected_language = evt.result.properties.get(
+                speechsdk.PropertyId.SpeechServiceConnection_AutoDetectSourceLanguageResult, "Unknown"
+            )
+            print(f"[{detected_language}] 完整識別: {evt.result.text}")
+            logging.info(f"偵測到語言: {detected_language}, 內容: {evt.result.text}")
+
+            self.transcript.append(f"{evt.result.text}")
+            self._write_hourly_log(f"{evt.result.text}")
+
         elif evt.result.reason == speechsdk.ResultReason.NoMatch:
             print("No speech could be recognized")
             logging.warning("No speech could be recognized")
