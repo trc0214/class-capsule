@@ -70,9 +70,8 @@ class SpeechRecognizer:
     def get_transcript(self):
         return ' '.join(self.transcript)
 
-    def _write_hourly_log(self, text):
+    def _write_hourly_log(self, text, output_dir="output"):
         current_time = datetime.now()
-        output_dir = "output"
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         filename = os.path.join(output_dir, current_time.strftime("speech_%Y-%m-%d_%H.txt"))
